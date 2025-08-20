@@ -1,8 +1,13 @@
 ---
-title: "Descriptic statitics of the respiratory diseases burden report from DGE"
-author: " IMELDA"
-date: "2025-08-15"
-output: html_document
+title: "Respiratory disease burden in Mexico, as 2025"
+author: "IMELDA"
+date: "2025-08-15, last updata August 20, 2025"
+output: 
+  html_document: 
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -20,7 +25,17 @@ rm(list = ls())      # clear memory (removes all the variables from the workspac
 ```{r}
 
 # getwd()
-mainpath<- "C:/Users/Imelda Trejo/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Research/Salud_publica/Influenza_Ejes_2025/data/"
+#mainpath<- "C:/Users/Imelda Trejo/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Research/Salud_publica/Influenza_Ejes_2025/data/"
+
+# Read the data
+url_Resp <- "https://github.com/imelit/Bayesian_inference_class_2025/raw/main/data/clean_respiratory_diseases_2025-08-05.Rdata"
+url_population <- "https://github.com/imelit/Bayesian_inference_class_2025/raw/main/data/clean_mexican_population.RData"
+
+load(url(url_Resp))
+
+load(url(url_population))
+
+
 
 ```
 
@@ -31,31 +46,34 @@ mainpath<- "C:/Users/Imelda Trejo/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE M
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(janitor)
 
 ## Load model functions 
 
 source('functions_flu.R')
 
-load(paste0(mainpath,"clean_population.RData") )
+#load(paste0(mainpath,"clean_population.RData") )
 
-load(paste0(mainpath,"respiratory_data_2025-08-05.RData") )
+#load(paste0(mainpath,"respiratory_data_2025-08-05.RData") )
 
+# Reescribir niveles
+#levels(data_resp$GRUPO_EDAD) <- c("0-4 years", "5-19 years", "20-64 years", "65+ years")
 
 ```
-# 03 MEXICAN' STATES LOCATIONS AND DISTRIBUTION   
+# 03 Medical Unit locations across Mexico 
 
 The data was freely dowloded from Dirección General de Epidemiologia (DGE).
 All observation correspond to respiratory diseases reports from USMER. 
 
 ```{r ORIGIN}
-print(summary(data_DGE$ORIGEN))
+print(summary(data_resp$ORIGEN))
 ```
 All hospital that fuels USMER are ploted below, is there the total user for each sector. Will be interesting to know the capacity usaged.
 
 
 ```{r SECTOR}
 
-ggplot(data_DGE, aes(x = SECTOR)) +
+ggplot(data_resp, aes(x = SECTOR)) +
   geom_bar(fill = "steelblue") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # rotar 45 grados
   labs(title = "Frecuencia de Sectores USMER", x = "sectores", y = "Cantidad")
@@ -66,7 +84,7 @@ The distribution of sector stratify by states where a Medical Units (UM) is loca
 
 ```{r SECTOR in all country}
 # cross tables
-  resumen <- data_DGE %>%
+  resumen <- data_resp %>%
   group_by(SECTOR, ENTIDAD_UM) %>%
   summarise(count = n(), .groups = "drop")
 
@@ -75,7 +93,7 @@ ggplot(resumen, aes(x = ENTIDAD_UM, y = count, fill = SECTOR)) +
   geom_bar(stat = "identity", position = "dodge") +
   labs(title = "Distributionof SECTORS in Mexico",
        x = "State",
-       y = "Number of users",
+       y = "Number of cases",
        fill = "SECTOR") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) # rotar 45 grados
 
@@ -87,48 +105,53 @@ There are some people who may travel to get medical assistance at their Unit Med
 
 ```{r}
 #cross table
-resumen2 <- data_DGE %>%
+resumen2 <- data_resp %>%
   group_by(ENTIDAD_RES, ENTIDAD_UM) %>%
   summarise(count = n(), .groups = "drop")
 
 print(resumen2)
 ```
 
-#04 AGE CHARACTERISTIC
+#04 Cases stratified by age groups
 
 ```{r}
-summary(data_DGE$EDAD)
+summary(data_resp$EDAD)
 
 #Distribución por grupos de edad
 
 # 1. Count cases by age group
-users_by_age <- data_DGE %>%
-  count(GRUPO_EDAD, name = "users")%>%
+cases_by_age <- data_resp %>%
+  count(GRUPO_EDAD, name = "Cases")%>%
   rename(AGE_GROUP = GRUPO_EDAD)
 
 
+
+
 # 2. Get population totals for 2025
+
+analysis_year <- 2025
+
 population_total <- population %>%
-  filter(Year == 2025) %>%
+  filter(Year == analysis_year) %>%
   select(AGE_GROUP, POPULATION)
 
 # 3. Join and calculate rates (per 100,000 people here)
-rate_age_grp <- users_by_age %>%
+rate_age_grp <- cases_by_age %>%
   left_join(population_total) %>%
-  mutate(rate_per_100k = round((users* 100000 / POPULATION), 2)) %>%
-  select(AGE_GROUP, users, POPULATION, rate_per_100k)
+  mutate(rate_per_100k = round((Cases* 100000 / POPULATION), 2)) %>%
+  select(AGE_GROUP, Cases, POPULATION, rate_per_100k)
 
 ggplot(rate_age_grp, aes(x = "", y = rate_per_100k, fill = AGE_GROUP)) +
   geom_col() +
   coord_polar(theta = "y") +
-  labs(title = "Users by Age Group (Proportion)") +
+  labs(title = "Cases by Age Group (Proportion)") +
   theme_minimal()
 
 
 # Rates per 100k by age group
 ggplot(rate_age_grp, aes(x = AGE_GROUP, y = rate_per_100k, fill = AGE_GROUP)) +
   geom_col() +
-  labs(title = "User Rate per 100,000 by Age Group", y = "Rate per 100,000", x = "Age Group") +
+  labs(title = "Cases Rate per 100,000 by Age Group", y = "Rate per 100,000", x = "Age Group") +
   theme_minimal() +
   theme(legend.position = "none")
 
@@ -136,19 +159,19 @@ ggplot(rate_age_grp, aes(x = AGE_GROUP, y = rate_per_100k, fill = AGE_GROUP)) +
 
 ```{r}
 # DISTRIBUTION BY AGE
-ggplot(data_DGE, aes(x = EDAD)) +
-  geom_histogram(bins = 30, fill = "lightblue", color = "black", alpha = 0.7) +
-  geom_vline(aes(xintercept = mean(EDAD, na.rm = TRUE)), 
-             color = "red", linetype = "dashed", size = 1) +
-  labs(title = "DistribuciOn de Edad de Pacientes con Enfermedades Respiratorias",
-       subtitle = paste("Edad promedio:", round(mean(data_DGE$EDAD, na.rm = TRUE), 1), "YEARS"),
-       x = "Edad (YEARS)", 
-       y = "Frecuencia") +
-  theme_minimal()
+#ggplot(data_DGE, aes(x = EDAD)) +
+#  geom_histogram(bins = 30, fill = "lightblue", color = "black", alpha = 0.7) +
+#  geom_vline(aes(xintercept = mean(EDAD, na.rm = TRUE)), 
+ #            color = "red", linetype = "dashed", size = 1) +
+#  labs(title = "DistribuciOn de Edad de Pacientes con Enfermedades Respiratorias",
+ #      subtitle = paste("Edad promedio:", round(mean(data_DGE$EDAD, na.rm = TRUE), 1), "YEARS"),
+#       x = "Edad (YEARS)", 
+#       y = "Frecuencia") +
+#  theme_minimal()
 
 
 # Pirámide poblacional por sexo y grupo de edad
-piramide_data <- data_DGE %>%
+piramide_data <- data_resp %>%
   filter(!is.na(SEXO), !is.na(GRUPO_EDAD)) %>%
   group_by(SEXO, GRUPO_EDAD) %>%
   summarise(count = n(), .groups = "drop") %>%
@@ -172,3 +195,80 @@ ggplot(piramide_data, aes(x = count_adj, y = GRUPO_EDAD, fill = SEXO)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
+# 05 All respiratory disases prevalence 
+
+```{r resp analysis} 
+
+ggplot(data_resp, aes(x = RESULTADO_PCR)) +
+  geom_bar(fill = "steelblue") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # rotar 45 grados
+  labs(title = "Frecuencia de Resultados PCR", x = "Resultado PCR", y = "Cantidad")
+
+
+ggplot(data_resp, aes(x = RESULTADO_PCR, fill=CLASIFICACION_FINAL_FLU)) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  # rotar 45 grados
+  labs(title = "Frecuencia de casos de Influenza", x = "Resultado", y = "Cantidad")
+
+tabla_cruzada <- data_resp %>%
+  tabyl(CLASIFICACION_FINAL_FLU, RESULTADO_PCR)
+
+clasificacion_y_resultado_laboratorio<-as.data.frame(tabla_cruzada)
+
+print(clasificacion_y_resultado_laboratorio)
+
+
+```
+#06 Influenza
+
+```{r only flu}
+
+data_flu <- data_resp %>% filter(CLASIFICACION_FINAL_FLU=="CASO DE INFLUENZA CONFIRMADO")
+
+data_flu <- data_flu %>%
+  rename(AGE_GROUP=GRUPO_EDAD)
+
+
+flu_clean <- data_flu %>%
+  left_join(population_total, by = "AGE_GROUP")
+
+flu_clean$YEAR <- analysis_year
+
+
+
+summary(flu_clean)
+
+#####
+
+
+
+CASOS_POR_FECHA_EDAD <- flu_clean %>%
+  filter(CLASIFICACION_FINAL_FLU == "CASO DE INFLUENZA CONFIRMADO") %>%
+  group_by(FECHA_SINTOMAS, AGE_GROUP,POPULATION,RESULTADO_PCR) %>%
+  summarise(CASOS = n(), .groups = "drop") %>%
+  mutate(RATE = (CASOS* 1000000 / POPULATION) )
+
+
+ggplot(CASOS_POR_FECHA_EDAD, aes(x = FECHA_SINTOMAS, y = RATE, color = AGE_GROUP)) +
+  geom_line() +
+  labs(
+    title = "Time series of confirmed influenza cases by age group",
+    x = "Symptom onset date",
+    y = "Rate per 1,000,000 population"
+  ) +
+  theme_minimal()
+
+
+ggplot(CASOS_POR_FECHA_EDAD, aes(x = FECHA_SINTOMAS, y = RATE, color = AGE_GROUP)) +
+  geom_line() +
+  facet_wrap(~RESULTADO_PCR, scales = "free_y") +
+  labs(
+    title = "Time series of influenza cases by age group and PCR result",
+    x = "Symptom onset date",
+    y = "Rate per 1,000,000 population"
+  ) +
+  theme_minimal()
+
+#save(dataFlu,file = paste0(myPath1,"data/Flu_clean_data.Rdata")) #Save ALL of the model parameters
+
+```
