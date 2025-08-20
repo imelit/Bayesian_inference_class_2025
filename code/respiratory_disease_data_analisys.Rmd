@@ -1,0 +1,290 @@
+---
+title: "Respiratory disease burden in Mexico"
+author: "IMELDA"
+date: "Last updata August 20, 2025"
+output: 
+  html_document: 
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    code_folding: hide
+
+---
+
+\newpage
+
+# 01 Overview
+
+We analyze Mexican respiratory diseases freely downloaded from:
+Dirección General de Epidemiología (DGE)
+
+https://www.gob.mx/salud/en/documentos/datos-abiertos-152127
+
+This code assumes data is already cleaned and available here:
+
+https://github.com/imelit/Bayesian_inference_class_2025/tree/main/data
+
+
+```{r}
+
+rm(list = ls())      # clear memory (removes all the variables from the workspace)
+
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, eval = TRUE)
+
+#Change `eval` to `TRUE` if you want to knit this document.
+
+```
+
+
+##01.1 Check working directory this is very important since many sub-folder paths depend on this
+
+```{r load data}
+
+# Define inputs
+
+year_analysis <- 2024
+date_analysis <- "2024-12-03"
+
+#year_analysis <- 2025
+#date_analysis <- "2025-08-05"
+
+
+file_name <- paste0("clean_respiratory_diseases_", date_analysis, ".Rdata")
+
+# URLs
+url_web <- "https://github.com/imelit/Bayesian_inference_class_2025/raw/main/data/"
+url_disease <- paste0(url_web, file_name)
+url_population <- paste0(url_web, "clean_mexican_population.RData")
+
+# Load data
+load(url(url_disease))
+load(url(url_population))
+
+
+```
+
+##01.2 Load packages functions 
+
+```{r read data sets}
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(janitor)
+
+
+```
+# 02 Medical unit locations across Mexico 
+
+
+All observation correspond to respiratory diseases reports from USMER. 
+
+```{r ORIGIN}
+print(summary(data_resp$ORIGEN))
+```
+All hospital that fuels USMER are ploted below, 
+
+¿Can we estimate the rates, do we have the denominators/total users?. 
+
+## 02.1 Sectors attending cases
+
+```{r SECTOR}
+
+ggplot(data_resp, aes(x = SECTOR)) +
+  geom_bar(fill = "steelblue") +
+  labs(
+    title = paste("Frequency of Mexican sectors attending cases in", year_analysis),
+    x = "Sector",
+    y = "Number of cases"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+```
+
+
+## 02.3 Sector by states
+
+Distribution of sectors attending cases, stratified by the states where Medical Units (UM) are located
+
+```{r }
+
+cross_table_sectorEntidad <- data_resp %>%
+  group_by(SECTOR, ENTIDAD_UM) %>%
+  summarise(count = n(), .groups = "drop")
+
+#head(cross_table_sectorEntidad,5)
+
+ggplot(cross_table_sectorEntidad, aes(x = ENTIDAD_UM, y = count, fill = SECTOR)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = paste("Distribution of sectors attending cases by state in", year_analysis),
+    x = "State",
+    y = "Number of cases",
+    fill = "Sector"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+```
+## 02.3 Residency vs. medical unit location
+
+There are some people who may travel to get medical assistance out of their residency.
+
+```{r}
+#cross table
+resumen2 <- data_resp %>%
+  group_by(ENTIDAD_RES, ENTIDAD_UM) %>%
+  summarise(count = n(), .groups = "drop")
+
+print(resumen2)
+```
+
+# 04 Respiratory cases stratified by age groups
+
+```{r}
+
+#total cases stratified by age
+summary(data_resp$AGE_GROUP)
+
+
+# 1. Count cases by age group
+cases_by_age <- data_resp %>%
+  count(AGE_GROUP, name = "Cases")
+
+
+
+# 2. Get population totals for 2025
+
+
+population_total <- population %>%
+  filter(Year == year_analysis) %>%
+  select(AGE_GROUP, POPULATION)
+
+# 3. Join and calculate rates (per 100,000 people here)
+rate_age_grp <- cases_by_age %>%
+  left_join(population_total) %>%
+  mutate(rate_per_100k = round((Cases* 100000 / POPULATION), 2)) %>%
+  select(AGE_GROUP, Cases, POPULATION, rate_per_100k)
+
+
+# Plot
+ggplot(rate_age_grp, aes(x = AGE_GROUP, y = rate_per_100k, fill = AGE_GROUP)) +
+  geom_col() +
+  labs(
+    title = paste("Respiratory Cases Rate per 100,000 by Age Group in", year_analysis),
+    y = "Rate per 100,000",
+    x = "Age Group"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+```
+
+```{r age-sex}
+
+# Pirámide poblacional por sexo y grupo de edad
+piramide_data <- data_resp %>%
+  filter(!is.na(SEXO), !is.na(AGE_GROUP)) %>%
+  group_by(SEXO, AGE_GROUP) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  mutate(
+    count_adj = ifelse(SEXO == "HOMBRE", -count, count),
+    porcentaje = round((count / sum(count)) * 100, 1)
+  )
+
+ggplot(piramide_data, aes(x = count_adj, y = AGE_GROUP, fill = SEXO)) +
+  geom_bar(stat = "identity") +
+  scale_x_continuous(labels = abs) +
+  scale_fill_manual(values = c("MUJER" = "pink", "HOMBRE" = "lightblue")) +
+  labs(
+    title = paste("Population Pyramid: Respiratory Disease Cases by Sex and Age in", year_analysis),
+    x = "Number of cases",
+    y = "Age group",
+    fill = "Sex"
+  ) +
+  theme_minimal()
+
+
+```
+
+# 05 Cases stratified by respiratory disase 
+```{r all resp}
+
+ggplot(data_resp, aes(x = RESULTADO_PCR, fill = CLASIFICACION_FINAL_FLU)) +
+  geom_bar() +
+  labs(
+    title = paste("Laboratory Results in", year_analysis),
+    x = "PCR Result",
+    y = "Number of Cases",
+    fill = "Final Classification"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+resp_cases <- data_resp %>%
+  filter(!RESULTADO_PCR %in% c(
+    "MUESTRA QUE NO AMPLIFICO", "MUESTRA SIN AISLAMIENTO", "SIN COINFECCIÓN",
+    "PENDIENTE", "MUESTRA NO RECIBIDA", "MUESTRA RECHAZADA",
+    "MUESTRA NO ADECUADA", "MUESTRA SIN CELULAS",
+    "NO APLICA (CASO SIN MUESTRA)", "NEGATIVO"
+  ))
+
+ggplot(resp_cases, aes(x = RESULTADO_PCR, fill = CLASIFICACION_FINAL_COVID)) +
+  geom_bar() +
+  labs(
+    title = paste("All respiratory cases by laboratory results in", year_analysis),
+    x = "PCR Result",
+    y = "Number of Cases",
+    fill = "Final Classification"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+```
+
+## 06 Flu vs COVID confirmed cases
+
+```{r}
+n_total <- nrow(data_resp)
+
+casos_resumen <- data_resp %>%
+  mutate(
+    CASE = case_when(
+      CLASIFICACION_FINAL_FLU == "CASO DE INFLUENZA CONFIRMADO" ~ "Influenza confirmado",
+      CLASIFICACION_FINAL_COVID == "CASO DE SARS-COV-2  CONFIRMADO" ~ "COVID-19 confirmado",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(CASE)) %>%
+  count(CASE, name = "n") %>%
+  mutate(prop_relativa = n / n_total)
+
+print(casos_resumen)
+
+ggplot(casos_resumen, aes(x = CASE, y = prop_relativa, fill = CASE)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = paste("Proportion of Confirmed Influenza and COVID-19 Cases in", year_analysis),
+    x = "Case type",
+    y = "Relative frequency"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+```
