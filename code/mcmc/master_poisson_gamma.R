@@ -8,9 +8,11 @@
 rm(list = ls())
 
 # Set working directory (adjust if needed)
-setwd("C:/Users/Imelda/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Teaching/Bayessian_inference/laboratorio/MCMC")
+#setwd("C:/Users/Imelda/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Teaching/Bayessian_inference/laboratorio/MCMC")
 
-#setwd("C:/Users/Imelda Trejo/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/Documentos")
+setwd("C:/Users/Imelda Trejo/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Teaching/Bayessian_inference/laboratorio/MCMC")
+
+
 # Load functions
 source("functions.R")
 
@@ -40,13 +42,14 @@ burn_in_percentage <- 0.1
 a <- 3
 b <- 2
 
-result <- mcmc_poisson(data = datos,
-                       n_iter = num_iteration ,
-                       initial_param = suma_y/n,
-                       step_size = 0.25,
-                       shape_prior=a,
-                       rate_prior=b,
-                       burn_in= burn_in_percentage)
+result <- mcmc_poisson_gamma(data = datos,
+                             shape_prior=a,
+                             rate_prior=b,
+                             n_iter = num_iteration ,
+                             initial_param = suma_y/n,
+                             step_size = 0.25,
+                             burn_in= burn_in_percentage
+                       )
 
 
 # ---------------------------
@@ -69,9 +72,9 @@ lines(density(result$samples), col = "blue", lwd = 2)
 # Agregamos la curva de la densidad teórica
 lines(x, dgamma(x, shape = shapePost, rate = ratePost),
       col = "red", lwd = 2)
-legend("topright", legend = c("Histograma (simulación)",
+legend("topright", legend = c("Histograma (simulación Monte Carlo)",
                               "Densidad empírica",
-                              "Densidad teórica"),
+                              "Densidad análitica"),
        col = c("skyblue", "blue", "red"), lwd = c(10, 2, 2),
        bty = "n")
 
