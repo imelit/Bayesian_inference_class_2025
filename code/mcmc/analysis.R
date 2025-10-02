@@ -1,15 +1,19 @@
 # ========================================================
 # Analysis Script: Posterior summaries from Poisson MCMC
 # ========================================================
+rm(list = ls())
+
 
 # Set working directory (adjust if needed)
-setwd("C:/Users/Imelda/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Teaching/Bayessian_inference/laboratorio/MCMC")
+#setwd("C:/Users/Imelda/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Teaching/Bayessian_inference/laboratorio/MCMC")
+setwd("C:/Users/Imelda Trejo/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Teaching/Bayessian_inference/laboratorio/MCMC")
+
 
 # --------------------------------------------------------
 # Load MCMC results (saved by master_poisson.R)
 # --------------------------------------------------------
-samples <- scan("parameter_samples.txt")
-acceptance <- scan("acceptance_record.txt")
+samples <- scan("parameter_samples_noninformative_prior.txt")
+acceptance <- scan("acceptance_record_noninformative_prior.txt")
 
 n_iter <- length(samples)
 
@@ -21,7 +25,6 @@ cat("Acceptance rate:", round(mean(acceptance) * 100, 2), "%\n\n")
 # --------------------------------------------------------
 # Basic Posterior Summaries
 # --------------------------------------------------------
-
 
 posterior_mean <- mean(samples)
 posterior_median <- median(samples)
@@ -48,12 +51,50 @@ hist(samples, breaks = 30, col = "lightblue", border = "white",
      main = "Posterior Histogram",
      xlab = "Lambda", freq = FALSE)
 
-# Posterior density (smooth curve)
-plot(density(samples), col = "red", lwd = 2,
-     main = "Posterior Density Estimate",
-     xlab = "Lambda")
-
-# Autocorrelation function
-acf(samples, main = "Autocorrelation of Chain")
-
 par(mfrow = c(1, 1))  # reset layout
+
+
+
+#### COMPARAR LAS DOS DISTRIBUSIONES POSTERIORES
+
+# Results with a gamma prior(3,2)
+
+#x <- seq(min(samples), max(samples), length.out = 500)
+
+
+x <- seq(0, 20, length.out = 500)
+
+# First curve (gamma prior)
+plot(x, dgamma(x, shape = 3, rate = 2), 
+     col = "red", lwd = 2, type = "l",
+     ylab = "Density", xlab = "x")
+
+# Second curve (flat prior = 1)
+lines(x, rep(1, length(x)), col = "blue", lwd = 2)
+
+legend("topright", legend = c("Gamma(3,2)", "Flat prior = 1"),
+       col = c("red", "blue"), lwd = 2)
+
+
+samples_gamma <- scan("parameter_samples_gamma_prior.txt")
+
+# Posterior histogram
+hist(samples, breaks = 30, col = "lightblue", border = "white",
+     main = "Posterior Distribution noninformative prior)",
+     xlab = "Parameter value", freq = FALSE)
+
+# Agregamos curva de densidad empírica (suavizada)
+lines(density(samples), col = "blue", lwd = 2)
+
+# Agregamos curva de densidad empírica (suavizada)
+lines(density(samples_gamma), col = "red", lwd = 2)
+legend("topright", legend = c("Posterior con noinformativo", "Posterior con Gamma(3,2)"),
+       col = c("blue","red"), lwd = 2)
+
+
+## Posterior density (smooth curve)
+#plot(density(samples), col = "red", lwd = 2,
+ #    main = "Posterior Density Estimate",
+#     xlab = "Lambda")
+
+
