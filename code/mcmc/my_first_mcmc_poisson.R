@@ -2,14 +2,22 @@
 # Master Script: Develop my first MCMC for a Poisson model
 # Improper prior (uniform on positive reals)
 # Author: Imelda Trejo
-# Last update: Sep 23 2025
+# Last update: Oct 02 2025
 # ========================================================
+
+rm(list = ls())
 
 # Set working directory (adjust if needed)
 setwd("C:/Users/Imelda/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Teaching/Bayessian_inference/laboratorio/MCMC")
 
+#setwd("C:/Users/Imelda Trejo/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/Documentos")
 # Load functions
+
+
 source("functions.R")
+
+#for reproducibility
+set.seed(111)
 
 # --------------------------------------------------------
 # Data: accidentes fatales por año (ejemplo)
@@ -46,15 +54,17 @@ proposal_test <- random_walk_proposal(rate_par_init, epsilon)
 cat("Proposal generated from random walk:", proposal_test, "\n\n")
 
 # --------------------------------------------------------
-# Step 3: Run the MCMC
+# Step 3: Run the MCMC poisson con prior igual a 1
 # --------------------------------------------------------
 
-num_iteration <- 20000
+num_iteration <- 200000
+burn_in_percentage <- 0.1
 
 result <- mcmc_poisson(data = datos,
                        n_iter = num_iteration ,
-                       initial_param = 1 , #rate_par_init
-                       step_size = 0.1)
+                       initial_param = suma_y/n,
+                       step_size = 0.25,
+                       burn_in= burn_in_percentage)
 
 # --------------------------------------------------------
 # Step 4: Diagnostics (extra visualization)
@@ -71,39 +81,55 @@ hist(result$samples, breaks = 30, col = "lightblue", border = "white",
      main = "Posterior Distribution",
      xlab = "Parameter value", freq = FALSE)
 
+
 # ---------------------------
 # Burn in concept
 # ---------------------------
 
-burn_in <- 1000     # periodo de burn-in
+#explore diferent initial conditions, what are yor conclusion?
 
-# Descartamos burn-in sampled values
+#-----------------------------------------------------------------
+# comparing the convergence of the mcmc method with the 
+# analytical parameter posterior distribution
+#-------------------------------------------------------------------- 
 
-samples <- result$samples[(burn_in+1):num_iteration]
-log_post <- result$log_post_values[(burn_in+1):num_iteration]
-acceptance <- result$acceptance[(burn_in+1):num_iteration]
+par(mfrow = c(1, 1))  # two plots side by side
 
+# Posterior analítica.
+#Gamma(sum_yi + 1,n)
 
+shapePost <- 1 +  suma_y    
+ratePost  <-  n       
 
-# Trace plot (después del burn-in)
-plot(samples, type = "l", col = "blue",
-     main = paste("Trace Plot (burn-in =", burn_in, ")"),
-     xlab = "Iteration", ylab = "Parameter value")
+x <- seq(min(result$samples), max(result$samples), length.out = 500)
+
 
 # Posterior histogram
-hist(samples, breaks = 30, col = "lightblue", border = "white",
+hist(result$samples, breaks = 30, col = "lightblue", border = "white",
      main = "Posterior Distribution (after burn-in)",
      xlab = "Parameter value", freq = FALSE)
 
-par(mfrow = c(1, 1))
+# Agregamos curva de densidad empírica (suavizada)
+lines(density(result$samples), col = "blue", lwd = 2)
+# Agregamos la curva de la densidad teórica
+lines(x, dgamma(x, shape = shapePost, rate=ratePost),
+      col = "red", lwd = 2)
+legend("topright", legend = c("Histograma (simulación)",
+                              "Densidad empírica",
+                              "Densidad teórica"),
+       col = c("skyblue", "blue", "red"), lwd = c(10, 2, 2),
+       bty = "n")
 
-#Guardar la muestra despues de eliminar las primeras iteraciones
 
 
-# Optinal: Save results when is not to heavy
+# Optional: Save results when is not too heavy
 
-write.table(samples, "parameter_samples.txt", row.names = FALSE, col.names = FALSE)
-write.table(log_post, "log_posterior.txt", row.names = FALSE, col.names = FALSE)
-write.table(acceptance, "acceptance_record.txt", row.names = FALSE, col.names = FALSE)
+write.table(samples, "parameter_samples_noninformative_prior.txt", row.names = FALSE, col.names = FALSE)
+write.table(log_post, "log_posterior_noninformative_prior.txt", row.names = FALSE, col.names = FALSE)
+write.table(acceptance, "acceptance_record_noninformative_prior.txt", row.names = FALSE, col.names = FALSE)
 
 cat("Files saved: parameter_samples.txt, log_posterior.txt, acceptance_record.txt\n")
+
+
+
+
