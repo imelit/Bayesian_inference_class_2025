@@ -8,12 +8,10 @@
 rm(list = ls())
 
 # Set working directory (adjust if needed)
-setwd("C:/Users/Imelda/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Teaching/Bayessian_inference/laboratorio/MCMC")
+#setwd("C:/Users/Imelda/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Teaching/Bayessian_inference/laboratorio/MCMC")
+setwd("C:/Users/Imelda Trejo/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/CCM_UNAM/Teaching/Bayessian_inference/laboratorio/MCMC")
 
-#setwd("C:/Users/Imelda Trejo/OneDrive - UNIVERSIDAD NACIONAL AUTÓNOMA DE MÉXICO/Documentos")
 # Load functions
-
-
 source("functions.R")
 
 #for reproducibility
@@ -58,13 +56,13 @@ cat("Proposal generated from random walk:", proposal_test, "\n\n")
 # --------------------------------------------------------
 
 num_iteration <- 200000
-burn_in_percentage <- 0.1
+burn_in_proportion <- 0.1
 
 result <- mcmc_poisson(data = datos,
                        n_iter = num_iteration ,
                        initial_param = suma_y/n,
                        step_size = 0.25,
-                       burn_in= burn_in_percentage)
+                       burn_in= burn_in_proportion)
 
 # --------------------------------------------------------
 # Step 4: Diagnostics (extra visualization)
@@ -93,7 +91,7 @@ hist(result$samples, breaks = 30, col = "lightblue", border = "white",
 # analytical parameter posterior distribution
 #-------------------------------------------------------------------- 
 
-par(mfrow = c(1, 1))  # two plots side by side
+par(mfrow = c(1, 1))  #back to one plot
 
 # Posterior analítica.
 #Gamma(sum_yi + 1,n)
@@ -114,9 +112,9 @@ lines(density(result$samples), col = "blue", lwd = 2)
 # Agregamos la curva de la densidad teórica
 lines(x, dgamma(x, shape = shapePost, rate=ratePost),
       col = "red", lwd = 2)
-legend("topright", legend = c("Histograma (simulación)",
+legend("topright", legend = c("Histograma (simulación Monte Carlo)",
                               "Densidad empírica",
-                              "Densidad teórica"),
+                              "Densidad análitica"),
        col = c("skyblue", "blue", "red"), lwd = c(10, 2, 2),
        bty = "n")
 
@@ -124,11 +122,11 @@ legend("topright", legend = c("Histograma (simulación)",
 
 # Optional: Save results when is not too heavy
 
-write.table(samples, "parameter_samples_noninformative_prior.txt", row.names = FALSE, col.names = FALSE)
-write.table(log_post, "log_posterior_noninformative_prior.txt", row.names = FALSE, col.names = FALSE)
-write.table(acceptance, "acceptance_record_noninformative_prior.txt", row.names = FALSE, col.names = FALSE)
+write.table(result$samples, "parameter_samples_noninformative_prior.txt", row.names = FALSE, col.names = FALSE)
+write.table(result$log_post, "log_posterior_noninformative_prior.txt", row.names = FALSE, col.names = FALSE)
+write.table(result$acceptance, "acceptance_record_noninformative_prior.txt", row.names = FALSE, col.names = FALSE)
 
-cat("Files saved: parameter_samples.txt, log_posterior.txt, acceptance_record.txt\n")
+cat("Files saved\n")
 
 
 
