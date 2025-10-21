@@ -301,6 +301,31 @@ log_posterior_negBinomial <- function(param, data) {
 }
 
 
+log_posterior_negBinomial_gamma <- function(param, data, shape_prior, rate_prior) {
+  
+  mean_param <- param[1]       # μ (media)
+  dispersion_param <- param[2] # r (dispersión)
+  
+  # Validar parámetros positivos
+  if (mean_param <= 0 || dispersion_param <= 0) return(-Inf)
+  
+  n <- length(data)
+  r <- dispersion_param
+  p <- dispersion_param / (dispersion_param + mean_param)
+  
+  # Log-verosimilitud de la Binomial Negativa
+  
+  log_likelihood <- sum(lgamma(data + r) +log(1 - p)*data) +
+    n * (r*log(p) - lgamma(r))
+  
+  #log prior
+  
+  log_prior <- (shape_prior - 1) * log(dispersion_param) - dispersion_param * rate_prior
+  
+  return(log_likelihood + log_prior)
+}
+
+
 # MCMC Sampler para Binomial Negativa
 #
 # Parámetros:
@@ -380,6 +405,82 @@ mcmc_negBinomial <- function(data, n_iter = 5000, initial_param = c(1, 1),
               acceptance = acceptance_after_burn_in,
               acceptance_rate = mean(acceptance_after_burn_in)))
 }
+
+#=============================================================
+# EJEMPLO DE USO
+#=============================================================
+
+
+mcmc_negBinomial_prior_gamma <- function(data, shape_prior, rate_prior, n_iter = 5000, initial_param = c(1, 1), 
+                             cov_matrix = diag(2) * 0.1, burn_in = 0.2) {
+  
+  total_params <- length(initial_param)  # Número de parámetros (2 en este caso)
+  
+  # Almacenamiento: matriz para múltiples parámetros
+  samples <- matrix(NA, nrow = n_iter, ncol = total_params)
+  log_post_values <- numeric(n_iter)
+  acceptance <- numeric(n_iter)
+  
+  # Inicialización
+  current_param <- initial_param
+  current_log_post <- log_posterior_negBinomial_gamma(current_param, data,shape_prior, rate_prior)
+  
+  samples[1, ] <- current_param
+  log_post_values[1] <- current_log_post
+  acceptance[1] <- 0
+  
+  cat("Starting MCMC with", n_iter, "iterations\n")
+  cat("Initial parameters: μ =", initial_param[1], 
+      ", r =", initial_param[2], "\n\n")
+  
+  # Loop MCMC
+  for (index in 2:n_iter) {
+    
+    # Propuesta multivariada
+    proposed_param <- multivariate_random_walk(current_param, cov_matrix)
+    proposed_log_post <- log_posterior_negBinomial_gamma(proposed_param, data,shape_prior, rate_prior)
+    
+    # Razón de aceptación
+    log_accept_ratio <- proposed_log_post - current_log_post
+    
+    # Aceptar/Rechazar
+    if (log_accept_ratio >= 0 || runif(1) < exp(log_accept_ratio)) {
+      current_param <- proposed_param
+      current_log_post <- proposed_log_post
+      acceptance[index] <- 1
+    }
+    
+    # Almacenar (nota: samples[index, ] para matrices)
+    samples[index, ] <- current_param
+    log_post_values[index] <- current_log_post
+    
+    # Progreso
+    if (index %% 1000 == 0) {
+      cat(sprintf("Iteration %d | Current Log-Posterior = %.3f | Acceptance rate = %.2f%%\n",
+                  index, current_log_post, mean(acceptance[1:index]) * 100))
+    }
+  }
+  
+  # Aplicar burn-in
+  init <- floor(burn_in * n_iter) + 1
+  samples_after_burn_in <- samples[init:n_iter, ]
+  log_post_after_burn_in <- log_post_values[init:n_iter]
+  acceptance_after_burn_in <- acceptance[init:n_iter]
+  
+  cat("\nMCMC Finished\n")
+  cat("Final Acceptance Rate:", round(mean(acceptance) * 100, 2), "%\n")
+  cat("Acceptance Rate (after burn-in):", 
+      round(mean(acceptance_after_burn_in) * 100, 2), "%\n")
+  
+  # Para matrices, agregar nombres a las columnas
+  colnames(samples_after_burn_in) <- c("mu", "phi")
+  
+  return(list(samples = samples_after_burn_in,
+              log_post_values = log_post_after_burn_in,
+              acceptance = acceptance_after_burn_in,
+              acceptance_rate = mean(acceptance_after_burn_in)))
+}
+
 
 
 #=============================================================
