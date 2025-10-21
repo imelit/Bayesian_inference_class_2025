@@ -67,7 +67,9 @@ x <- seq(0, 20, length.out = 500)
 # First curve (gamma prior)
 plot(x, dgamma(x, shape = 3, rate = 2), 
      col = "red", lwd = 2, type = "l",
-     ylab = "Density", xlab = "x")
+     ylab = "Density", xlab = "x",
+     ylim = c(0, 1.2))  # <- Aquí se fija el rango del eje Y
+
 
 # Second curve (flat prior = 1)
 lines(x, rep(1, length(x)), col = "blue", lwd = 2)
@@ -80,12 +82,11 @@ samples_gamma <- scan("parameter_samples_gamma_prior.txt")
 
 # Posterior histogram
 hist(samples, breaks = 30, col = "lightblue", border = "white",
-     main = "Posterior Distribution noninformative prior)",
-     xlab = "Parameter value", freq = FALSE)
+     main = "Posterior Distribution with a noninformative vs gamma prior)",
+     xlab = "Parameter value", freq = FALSE, xlim = c(10, 40), ylim = c(0, .4))
 
 # Agregamos curva de densidad empírica (suavizada)
 lines(density(samples), col = "blue", lwd = 2)
-
 # Agregamos curva de densidad empírica (suavizada)
 lines(density(samples_gamma), col = "red", lwd = 2)
 legend("topright", legend = c("Posterior con noinformativo", "Posterior con Gamma(3,2)"),
@@ -98,3 +99,16 @@ legend("topright", legend = c("Posterior con noinformativo", "Posterior con Gamm
 #     xlab = "Lambda")
 
 
+# --------------------------------------------------------
+# Basic Posterior Summaries
+# --------------------------------------------------------
+
+posterior_mean <- mean(samples_gamma)
+posterior_median <- median(samples_gamma)
+posterior_var <- var(samples_gamma)
+credible_interval <- quantile(samples_gamma, probs = c(0.025, 0.975))
+
+cat("Posterior mean:", posterior_mean, "\n")
+cat("Posterior median:", posterior_median, "\n")
+cat("Posterior variance:", posterior_var, "\n")
+cat("95% credible interval:", credible_interval, "\n\n")
